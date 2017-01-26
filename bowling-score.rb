@@ -27,3 +27,28 @@
 # input list length is correct
 # number of pins knocked out per roll is valid
 
+
+def bowling_score(rolls)
+  i = 0
+  frames = 0
+  scores = []
+
+  while frames < 10 do
+    if rolls[i] == 10  # handle strike
+      bonus = rolls[i+1] + rolls[i+2]
+      i = i + 1
+      scores << 10 + bonus
+    elsif rolls[i] + rolls[i+1] == 10  # handle spare                
+      bonus = rolls[i+2]
+      i = i + 2
+      scores << 10 + bonus
+    else
+      scores << rolls[i] + rolls[i + 1]
+      i = i + 2
+    end
+
+    frames += 1
+  end
+
+  scores.reduce(&:+)
+end
