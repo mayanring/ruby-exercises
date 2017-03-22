@@ -18,7 +18,6 @@ class Board
 
   def draw
     @grid.each_with_index do |row, i|
-
       row.each_with_index do |cell, j|
         output = '. '
 
@@ -161,14 +160,58 @@ class Player
     marker = hit ? 'x' : 'o'
 
     @enemy_ships.grid[y][x] = marker
+
+    hit
+  end
+
+  def defeat?
+    @ships.lose?
   end
 end
 
 
+puts "BATTLESHIP RUBY EDITION"
+puts
 
-# what is Grid responsible
+puts "Player one, what is your name?"
+player_one_name = gets.chomp
 
-# what would a rails implementation of this look like?
-  # file upload of ship positions?
-  # what kind of database storage?
-    # validations
+puts "Player two, what is your name?"
+player_two_name = gets.chomp
+
+p1 = Player.new(player_one_name, "player_one.json")
+p2 = Player.new(player_two_name, "player_two.json")
+
+current_player = p1
+next_player = p2
+
+puts
+puts
+
+while 1 do
+  puts
+  puts
+  puts "*** #{current_player.name} ***"
+  puts "Enemy ships:"
+  current_player.enemy_ships.draw
+  puts "Your ships:"
+  current_player.ships.draw
+
+  puts "Fire at #{next_player.name} (x, y): "
+  target = gets.chomp.split(',')
+
+  hit = current_player.fire_on(next_player, target[0].to_i, target[1].to_i)
+
+  if hit
+    puts "You hit #{next_player.name}!"
+  else
+    puts "You missed!"
+  end
+
+  if next_player.defeat?
+    puts "#{current_player.name} has won!!!!1111"
+    break
+  end
+
+  current_player, next_player = next_player, current_player
+end
