@@ -1,30 +1,39 @@
-# grid keeps track of an n x n grid
-# board keeps track of no attempt and misses only, leaves hits up to ships.
+require 'json'
+
+# Board (n x n) can be used in two modes:
+# 1. keep track of your own ship locations and whether they've been hit "your ships"
+# 2. keep track of your hits and misses (without ship info) "enemy ships" and no attempts
 
 class Board
+  BOARD_MODES = %i(your_ships enemy_ships)
   attr_accessor :grid, :ships
 
-  def initialize(size = 10)
+  def initialize(mode, size = 10)
+    raise StandardError.new("Board mode must be either :your_ships or :enemy_ships") unless BOARD_MODES.include?(mode)
+
     @grid = Array.new(size) { Array.new(size) }
     @ships = []
+    @mode = mode
   end
 
   def draw
     @grid.each_with_index do |row, i|
 
       row.each_with_index do |cell, j|
-        ship = @ships.find { |ship| ship.hit?(j, i) }
-        output =  if ship && ship.damaged?(j, i)
-                    "x "
-                  elsif ship
-                    "#{Ship::SHIP_LENGTHS[ship.type]} "
-                  else
-                    if cell
-                      "#{cell} "
+        output = '. '
+
+        if @mode == :your_ships
+          ship = @ships.find { |ship| ship.hit?(j, i) }
+          output =  if ship && ship.damaged?(j, i)
+                      "x "
+                    elsif ship
+                      "#{Ship::SHIP_LENGTHS[ship.type]} "
                     else
-                      '. '
+                      ". "
                     end
-                  end
+        else  # enemy ships
+          output = cell ? "#{cell} " : '. '
+        end
 
         print output
       end
@@ -35,23 +44,24 @@ class Board
     puts
   end
 
-  def attack(x, y)
+  # makes an attack on a particular board
+  def attack!(x, y)
+    raise "Cannot call attack! on :enemy_ships board" unless @mode == :your_ships
+
     ship = @ships.find { |ship| ship.hit?(x, y) }
 
     if ship
       ship.mark_as_hit(x, y)
       attack_successful = true
     else
-      # mark as miss
-      @grid[y][x] = 'o'
       attack_successful = false
     end
 
     attack_successful
   end
 
-  def set_default_ship_locations
-    default_locations.each do |ship_type, ships_to_create|
+  def set_ship_locations(locations_hsh)
+    locations_hsh.each do |ship_type, ships_to_create|
       ships_to_create.each do |ship_locations|
         ship = Ship.new(ship_type)
 
@@ -66,34 +76,6 @@ class Board
 
   def lose?
     @ships.all? { |ship| ship.sunk? }
-  end
-
-  private
-
-  def default_locations
-    # each one of these values is an array of ships
-    # inside each ship array is a list of positions
-
-    # this can be potentially loaded via yaml or in a params hash as part of a request
-    {
-      carrier: [
-        [[9, 1], [9, 2], [9, 3], [9, 4], [9, 5]]
-      ],
-      battleship: [
-        [[7, 4], [7, 5], [7, 6], [7, 7]]
-      ],
-      cruiser: [
-        [[2, 6], [3, 6], [4, 6]]
-      ],
-      destroyer: [
-        [[1, 1], [1, 2]],
-        [[3, 4], [4, 4]]
-      ],
-      submarine: [
-        [[3, 2]],
-        [[1, 8]]
-      ]
-    }
   end
 end
 
@@ -112,14 +94,13 @@ end
 class Ship
   attr_accessor :type
 
-  SHIP_TYPES = %i(carrier battleship cruiser destroyer submarine)
+  SHIP_TYPES = %i(carrier battleship cruiser destroyer)
 
   SHIP_LENGTHS = {
     carrier: 5,
     battleship: 4,
     cruiser: 3,
-    destroyer: 2,
-    submarine: 1
+    destroyer: 2
   }
 
   def initialize(type)
@@ -156,6 +137,33 @@ class Ship
     @parts.all? { |part| part.hit }
   end
 end
+
+
+class Player
+  attr_accessor :ships, :enemy_ships, :name
+
+  def initialize(name, filename)
+    @name = name
+    file = File.read(filename)
+    ship_locations = JSON.parse(file, symbolize_names: true)
+    @ships = Board.new(:your_ships)
+    @ships.set_ship_locations(ship_locations)
+
+    @enemy_ships = Board.new(:enemy_ships)
+  end
+
+  def attack(x, y)
+    @ships.attack!(x, y)
+  end
+
+  def fire_on(player, x, y)
+    hit = player.attack(x, y)
+    marker = hit ? 'x' : 'o'
+
+    @enemy_ships.grid[y][x] = marker
+  end
+end
+
 
 
 # what is Grid responsible
