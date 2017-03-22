@@ -43,7 +43,7 @@ class Board
     puts
   end
 
-  # makes an attack on a particular board
+  # this causes an attack on a player's board
   def attack!(x, y)
     raise "Cannot call attack! on :enemy_ships board" unless @mode == :your_ships
 
@@ -179,11 +179,8 @@ player_one_name = gets.chomp
 puts "Player two, what is your name?"
 player_two_name = gets.chomp
 
-p1 = Player.new(player_one_name, "player_one.json")
-p2 = Player.new(player_two_name, "player_two.json")
-
-current_player = p1
-next_player = p2
+current_player = Player.new(player_one_name, "player_one.json")
+next_player = Player.new(player_two_name, "player_two.json")
 
 puts
 puts
